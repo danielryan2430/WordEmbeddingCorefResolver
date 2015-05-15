@@ -1,0 +1,12 @@
+logs
+*.class
+target/*
+onto*
+target
+conll*
+*.iml
+*.ipr
+project
+*.iws
+.idea
+out
