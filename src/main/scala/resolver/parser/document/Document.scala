@@ -1,5 +1,7 @@
 package resolver.parser.document
 
+import org.deeplearning4j.word2vec.Word2Vec
+
 class Document(val features:Array[FeatureSet], val id:String){
       def isGold(mention:Int, antecedent:Int): Boolean ={
         classify(mention,antecedent)==4
@@ -14,3 +16,4 @@ class Document(val features:Array[FeatureSet], val id:String){
       else 4
     }
 }
+

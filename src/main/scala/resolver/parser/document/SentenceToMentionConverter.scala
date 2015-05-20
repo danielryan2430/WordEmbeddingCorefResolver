@@ -6,6 +6,7 @@ import edu.stanford.nlp.ling.CoreAnnotations.{TextAnnotation, TokensAnnotation, 
 import edu.stanford.nlp.pipeline.{Annotation, StanfordCoreNLP}
 import edu.stanford.nlp.trees.{SemanticHeadFinder, Tree, ModCollinsHeadFinder, HeadFinder}
 import edu.stanford.nlp.util.{CoreMap, PropertiesUtils}
+import org.deeplearning4j.word2vec.Word2Vec
 
 
 object SentenceToMentionConverter {
@@ -86,7 +87,7 @@ object SentenceToMentionConverter {
         nextType = nextSentence.partOfSpeech(0)
       }
        else{
-        if(s.words(c.end+1).head==',' || s.words(c.end+1).head=='\''){
+        if((s.words(c.end+1).head==',' || s.words(c.end+1).head=='\'')&&c.end+2<s.words.length){
           nextWord =  s.words(c.end+2)
           nextType = s.words(c.end + 2)
         }
@@ -193,3 +194,4 @@ class FeatureSet(mID: Int, rID: Int, sNum: Int, mType: String, cString: String, 
   val nextWord: String = nWord
   var predictedMentionID = -1
 }
+

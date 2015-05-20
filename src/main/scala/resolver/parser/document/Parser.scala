@@ -8,7 +8,6 @@ import org.deeplearning4j.word2vec.inputsanitation.InputHomogenization
 import org.deeplearning4j.word2vec.sentenceiterator.{SentencePreProcessor, CollectionSentenceIterator}
 
 import scala.collection.mutable.ListBuffer
-import scala.collection.JavaConverters._
 
 object Parser {
 
@@ -18,7 +17,11 @@ object Parser {
 
         val a:Seq[String] = sentences.foldLeft(Seq[String]())(( b:Seq[String], container:ConLLSentenceContainer) =>
             b++container.sentenceList.map(
-              (s:CoNLLSentence) => s.getSentenceString())
+              (
+                s:CoNLLSentence) => {
+//                println(s.getEmbeddingSentence())
+                s.getEmbeddingSentence()})
+
         )
        println("parsed the files, now we will convert to mentions")
        val hold = new ListBuffer[Document]

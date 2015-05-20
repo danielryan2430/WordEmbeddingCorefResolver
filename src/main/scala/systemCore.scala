@@ -1,6 +1,8 @@
 
 
-import java.io.{FileWriter, File}
+import java.io.{FileInputStream, FileOutputStream, FileWriter, File}
+import org.apache.commons.lang
+import org.apache.commons.lang.SerializationUtils
 import org.deeplearning4j.word2vec.Word2Vec
 import org.deeplearning4j.word2vec.inputsanitation.InputHomogenization
 import org.deeplearning4j.word2vec.sentenceiterator.{SentencePreProcessor, CollectionSentenceIterator}
@@ -8,6 +10,7 @@ import resolver.parser.document.{Parser, Document}
 import classifier.{FeatureExtractor, adaGradTrainer, bayesianClassifier}
 
 import scala.util.Random
+import scala.collection.JavaConverters._
 
 object systemCore {
 
@@ -52,7 +55,17 @@ object systemCore {
     val preProcessedDocs: List[(List[Document], Seq[String])] = goldTrainFiles.map(Parser.parse(_)).toList
     val processedDocs: List[List[Document]] = preProcessedDocs.map(_._1)
     println("number of documents: " + processedDocs.length)
-
+    val myVec: File = new File("myVec.data")
+    val word2vec = if (!myVec.exists()) {
+    val temp = prepWordEmbedding(preProcessedDocs.map(_._2).flatten)
+    temp.train()
+    SerializationUtils.serialize(temp, new FileOutputStream(new File("myVec.data")))
+      temp
+  }
+    else{
+      val tmp:Word2Vec = SerializationUtils.deserialize(new FileInputStream(myVec)).asInstanceOf[Word2Vec]
+      tmp
+    }
 //    for(doc <-processedDocs){
 //      println("individual length "-> doc.length)
 //    }
@@ -61,8 +74,7 @@ object systemCore {
 
 
 
-
-    val featurizer = new FeatureExtractor(docList)
+    val featurizer = new FeatureExtractor(docList, word2vec)
 
     featurizer.dumpFeatures()
 
@@ -74,7 +86,9 @@ object systemCore {
     var weights = Array[Double]()
     if(!noWeights) {
       weights = adaGradTrainer.train(docList, 1, .001, 5, featurizer.featCount, featurizer.extractFeatures, adaGradTrainer.lossFunctionGen(3, .1, 1))
-
+//      println(featurizer.change+" "+ featurizer.count)
+//      println(featurizer.change/ featurizer.count)
+      //System.exit(0);
 
       val sav = new File("./SaveWeights.txt")
       val wri = new FileWriter(sav)
@@ -127,6 +141,7 @@ object systemCore {
 //      }
 //    }
 //    println("number of gold clusters: " + a.size)
+    println(featurizer.featIndMap.getOrElse("haDistHead=50", "a")+" "+featurizer.featIndMap.getOrElse("haDistHead=49", "a")+" "+featurizer.featIndMap.getOrElse("haDistHead=48", "a")+" "+featurizer.featIndMap.getOrElse("haDistHead=40", "a")+" "+featurizer.featIndMap.getOrElse("haDistHead=35", "a")+" "+featurizer.featIndMap.getOrElse("haDistHead=30", "a")+" "+featurizer.featIndMap.getOrElse("haDistHead=45", "a")+" "+featurizer.featIndMap.getOrElse("haDistHead=7", "a"))
     println("Total Errors = " + (fn+fa+wl))
 
     println("False New = " + fn)
@@ -140,14 +155,14 @@ object systemCore {
 
 
 
-//  def prepWordEmbedding(a:Seq[String]) = {
-//    val iterator = new CollectionSentenceIterator(
-//      new SentencePreProcessor() {
-//        override def preProcess(sentence: String): String = new InputHomogenization(sentence).transform()
-//      },
-//      a.asJava
-//    )
-//    val word2vec:Word2Vec = new Word2Vec(iterator)
-//  }
+  def prepWordEmbedding(a:Seq[String]):Word2Vec = {
+    val iterator = new CollectionSentenceIterator(
+      new SentencePreProcessor() {
+        override def preProcess(sentence: String): String = new InputHomogenization(sentence).transform()
+      },
+      a.asJava
+    )
+    new Word2Vec(iterator)
+  }
 
 }

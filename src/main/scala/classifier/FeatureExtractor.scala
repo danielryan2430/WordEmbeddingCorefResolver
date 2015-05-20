@@ -4,9 +4,12 @@ package classifier
 import java.io.{FileWriter, File}
 
 import edu.stanford.nlp.dcoref.Dictionaries
+import org.deeplearning4j.word2vec.Word2Vec
 import resolver.parser.document.{PronounDictionary, lexicalCounter, FeatureSet, Document}
 
-class FeatureExtractor(docs:Seq[Document]) {
+class FeatureExtractor(docs:Seq[Document], embedding:Word2Vec){
+var change:Double=0
+var count:Double =0
   val (featIndMap, featCount)=createFeatureIndex(docs)
   var cachedFeatures =Map[(String,Int,Int),Seq[Int]]()
   def extractFeatures(doc: Document, mention: Int, antecedent: Int): Seq[Int] = {
@@ -70,8 +73,8 @@ class FeatureExtractor(docs:Seq[Document]) {
       if (feat.mentionType == "PRP")
         try {
           PronounDictionary.getCanonicalPronLc(feat.completeString)
-        } catch{
-          case e:Exception =>{
+        } catch {
+          case e: Exception => {
             println(feat.completeString)
             "PRP"
           }
@@ -120,8 +123,56 @@ class FeatureExtractor(docs:Seq[Document]) {
       strings += buildName("headWordMatch=" + (antecedent.semanticHead == mention.semanticHead), mention, antecedent)
       strings += buildName("sentenceDistance=" + Math.min(mention.sentenceNum - antecedent.sentenceNum, 10), mention, antecedent)
       strings += buildName("mentionDistance=" + Math.min(mention.refID - antecedent.refID, 10), mention, antecedent)
+      //      if(embedding.similarity(mention.semanticHead, antecedent.semanticHead)<.05) {
+      //
+      strings += buildName("cosineSimilarity=" + (embedding.similarity(mention.completeString.replace(" ", "_"), antecedent.completeString.replace(" ", "_")) > 0), mention, antecedent)
+      //      println("cosine similarity: " + embedding.similarity(mention.completeString.replace(" ", "_"), antecedent.completeString.replace(" ", "_")))
+      //      strings += buildName("cosineSimilarityFirst=" + embedding.similarity(mention.firstWord, antecedent.firstWord), mention, antecedent)
 
+      //      strings += buildName("cosineSimilarityPrev=" + embedding.similarity(mention.previousWord, antecedent.previousWord), mention, antecedent)
+      strings += buildName("eDistHead=" + calculate_euclidian_distance(mention.completeString.replace(" ", "_"), antecedent.completeString.replace(" ", "_")), mention, antecedent)
+
+
+      strings += buildName("haDistHead=" + calculate_hamming_distance_analog(mention.completeString.replace(" ", "_"), antecedent.completeString.replace(" ", "_"),.001), mention, antecedent)
+      strings += "haDistHead=" + calculate_hamming_distance_analog(mention.completeString.replace(" ", "_"), antecedent.completeString.replace(" ", "_"),.001)
+
+      //      println("euclidian distance is:" + calculate_euclidian_distance(mention.semanticHead, antecedent.semanticHead))
+      //      strings += buildName("eDistFirst=" + calculate_euclidian_distance(mention.firstWord, antecedent.firstWord), mention, antecedent)
+      //      strings += buildName("eDistLast=" + calculate_euclidian_distance(mention.lastWord, antecedent.lastWord), mention, antecedent)
+
+      //      }
     }
     strings.toList
+
   }
+
+  def calculate_euclidian_distance(mention: String, antecedent: String): Double = {
+      val mVec = embedding.getWordVector(mention).toList
+      val antVec = embedding.getWordVector(antecedent).toList
+      val dist = math.sqrt(mVec.zip(antVec).foldLeft(0.0)((a: Double, b: (Double, Double)) => math.pow((b._1 - b._2), 2.0)))
+      if (dist < .005) return 1
+      if (dist < .009) return 2
+      if (dist < .02) return 3
+      return 4
+    }
+
+    def calculate_hamming_distance_analog(mention: String, antecedent: String, thresh: Double): Int = {
+      val mVec = embedding.getWordVector(mention).toList
+      val antVec = embedding.getWordVector(antecedent).toList
+      val dist = (mVec.zip(antVec)).foldLeft(0)((a: Int, b: (Double, Double)) => {
+//        change += math.abs(b._1 - b._2);
+//        count += 1;
+        a + (if (math.abs(b._1 - b._2) > thresh*3) 3
+          else if (math.abs(b._1 - b._2) > thresh*2) 2
+        else if (math.abs(b._1 - b._2) > thresh) 1
+        else 0)
+      })
+      return dist
+    }
+
 }
+
+
+
+
+
